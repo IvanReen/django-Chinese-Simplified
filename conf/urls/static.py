@@ -23,5 +23,9 @@ def static(prefix, view=serve, **kwargs):
         # 如果不处于调试模式或非本地前缀，则为no-op。
         return []
     return [
-        re_path(r'^%s(?P<path>.*)$' % re.escape(prefix.lstrip('/')), view, kwargs=kwargs),
+        re_path(
+            f"^{re.escape(prefix.lstrip('/'))}(?P<path>.*)$",
+            view,
+            kwargs=kwargs,
+        )
     ]

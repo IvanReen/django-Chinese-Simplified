@@ -81,7 +81,7 @@ class SpatialReference(GDALBase):
 
         # If the pointer is NULL, throw an exception.
         if not srs:
-            raise SRSException('Could not create spatial reference from: %s' % srs_input)
+            raise SRSException(f'Could not create spatial reference from: {srs_input}')
         else:
             self.ptr = srs
 

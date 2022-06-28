@@ -47,10 +47,7 @@ def check_string(result, func, cargs, offset=-1, str_result=False):
     if str_result:
         # For routines that return a string.
         ptr = result
-        if not ptr:
-            s = None
-        else:
-            s = string_at(result)
+        s = string_at(result) if ptr else None
     else:
         # Error-code return specified.
         check_err(result)
@@ -69,8 +66,7 @@ def check_string(result, func, cargs, offset=-1, str_result=False):
 # ### Envelope checking ###
 def check_envelope(result, func, cargs, offset=-1):
     "Check a function that returns an OGR Envelope by reference."
-    env = ptr_byref(cargs, offset)
-    return env
+    return ptr_byref(cargs, offset)
 
 
 # ### Geometry error-checking routines ###

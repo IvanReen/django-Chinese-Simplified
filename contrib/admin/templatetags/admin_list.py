@@ -51,30 +51,28 @@ def pagination(cl):
     pagination_required = (not cl.show_all or not cl.can_show_all) and cl.multi_page
     if not pagination_required:
         page_range = []
+    elif paginator.num_pages <= 10:
+        page_range = range(paginator.num_pages)
     else:
         ON_EACH_SIDE = 3
         ON_ENDS = 2
+        page_range = []
+        if page_num > (ON_EACH_SIDE + ON_ENDS):
+            page_range += [
+                *range(ON_ENDS),
+                DOT,
+                *range(page_num - ON_EACH_SIDE, page_num + 1),
+            ]
 
-        # 如果有10个或更少页面，则显示指向每个页面的链接。 否则，做一些幻想
-        if paginator.num_pages <= 10:
-            page_range = range(paginator.num_pages)
         else:
-            # 插入“smart”分页链接，以便在页面列表的任一端始终存在ON_ENDS链接，并且“current page--当前页面”链接的任一端始终存在ON_EACH_SIDE链接。
-            page_range = []
-            if page_num > (ON_EACH_SIDE + ON_ENDS):
-                page_range += [
-                    *range(0, ON_ENDS), DOT,
-                    *range(page_num - ON_EACH_SIDE, page_num + 1),
-                ]
-            else:
-                page_range.extend(range(0, page_num + 1))
-            if page_num < (paginator.num_pages - ON_EACH_SIDE - ON_ENDS - 1):
-                page_range += [
-                    *range(page_num + 1, page_num + ON_EACH_SIDE + 1), DOT,
-                    *range(paginator.num_pages - ON_ENDS, paginator.num_pages)
-                ]
-            else:
-                page_range.extend(range(page_num + 1, paginator.num_pages))
+            page_range.extend(range(page_num + 1))
+        if page_num < (paginator.num_pages - ON_EACH_SIDE - ON_ENDS - 1):
+            page_range += [
+                *range(page_num + 1, page_num + ON_EACH_SIDE + 1), DOT,
+                *range(paginator.num_pages - ON_ENDS, paginator.num_pages)
+            ]
+        else:
+            page_range.extend(range(page_num + 1, paginator.num_pages))
 
     need_show_all_link = cl.can_show_all and not cl.show_all and cl.multi_page
     return {
@@ -195,7 +193,7 @@ def _coerce_field_name(field_name, field_index):
     """
     if callable(field_name):
         if field_name.__name__ == '<lambda>':
-            return 'lambda' + str(field_index)
+            return f'lambda{str(field_index)}'
         else:
             return field_name.__name__
     return field_name
@@ -318,10 +316,7 @@ def result_list(cl):
     一起显示标题和数据列表。
     """
     headers = list(result_headers(cl))
-    num_sorted_fields = 0
-    for h in headers:
-        if h['sortable'] and h['sorted']:
-            num_sorted_fields += 1
+    num_sorted_fields = sum(1 for h in headers if h['sortable'] and h['sorted'])
     return {'cl': cl,
             'result_hidden_fields': list(result_hidden_fields(cl)),
             'result_headers': headers,

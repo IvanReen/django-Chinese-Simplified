@@ -35,10 +35,7 @@ class JSONField(forms.CharField):
                 code='invalid',
                 params={'value': value},
             )
-        if isinstance(converted, str):
-            return JSONString(converted)
-        else:
-            return converted
+        return JSONString(converted) if isinstance(converted, str) else converted
 
     def bound_data(self, data, initial):
         if self.disabled:
@@ -49,9 +46,7 @@ class JSONField(forms.CharField):
             return InvalidJSONInput(data)
 
     def prepare_value(self, value):
-        if isinstance(value, InvalidJSONInput):
-            return value
-        return json.dumps(value)
+        return value if isinstance(value, InvalidJSONInput) else json.dumps(value)
 
     def has_changed(self, initial, data):
         if super().has_changed(initial, data):

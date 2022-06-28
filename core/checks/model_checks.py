@@ -66,7 +66,7 @@ def _check_lazy_references(apps, ignore=None):
             # The or clauses are redundant but work around a bug (#25945) in
             # functools.partial in Python <= 3.5.1.
             args.extend(getattr(operation, 'args', []) or [])
-            keywords.update(getattr(operation, 'keywords', {}) or {})
+            keywords |= (getattr(operation, 'keywords', {}) or {})
             operation = operation.func
         return operation, args, keywords
 

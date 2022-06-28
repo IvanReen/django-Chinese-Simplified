@@ -53,7 +53,5 @@ class Command(BaseCommand):
         TestRunner = get_runner(settings, options['testrunner'])
 
         test_runner = TestRunner(**options)
-        failures = test_runner.run_tests(test_labels)
-
-        if failures:
+        if failures := test_runner.run_tests(test_labels):
             sys.exit(1)

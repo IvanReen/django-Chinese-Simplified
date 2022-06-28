@@ -155,8 +155,8 @@ class DateTimeRangeContains(models.Lookup):
         cast_sql = ''
         if isinstance(self.rhs, models.Expression) and self.rhs._output_field_or_none:
             cast_internal_type = self.lhs.output_field.base_field.get_internal_type()
-            cast_sql = '::{}'.format(connection.data_types.get(cast_internal_type))
-        return '%s @> %s%s' % (lhs, rhs, cast_sql), params
+            cast_sql = f'::{connection.data_types.get(cast_internal_type)}'
+        return f'{lhs} @> {rhs}{cast_sql}', params
 
 
 DateRangeField.register_lookup(DateTimeRangeContains)
@@ -176,9 +176,9 @@ class RangeContainedBy(models.Lookup):
     def as_sql(self, qn, connection):
         field = self.lhs.output_field
         if isinstance(field, models.FloatField):
-            sql = '%s::numeric <@ %s::{}'.format(self.type_mapping[field.db_type(connection)])
+            sql = f'%s::numeric <@ %s::{self.type_mapping[field.db_type(connection)]}'
         else:
-            sql = '%s <@ %s::{}'.format(self.type_mapping[field.db_type(connection)])
+            sql = f'%s <@ %s::{self.type_mapping[field.db_type(connection)]}'
         lhs, lhs_params = self.process_lhs(qn, connection)
         rhs, rhs_params = self.process_rhs(qn, connection)
         params = lhs_params + rhs_params

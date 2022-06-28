@@ -118,14 +118,15 @@ class Command(BaseCommand):
         try:
             connection.check_constraints(table_names=table_names)
         except Exception as e:
-            e.args = ("Problem installing fixtures: %s" % e,)
+            e.args = (f"Problem installing fixtures: {e}", )
             raise
 
         # If we found even one object in a fixture, we need to reset the
         # database sequences.
         if self.loaded_object_count > 0:
-            sequence_sql = connection.ops.sequence_reset_sql(no_style(), self.models)
-            if sequence_sql:
+            if sequence_sql := connection.ops.sequence_reset_sql(
+                no_style(), self.models
+            ):
                 if self.verbosity >= 2:
                     self.stdout.write("Resetting sequences\n")
                 with connection.cursor() as cursor:
@@ -180,8 +181,7 @@ class Command(BaseCommand):
                                     '\rProcessed %i object(s).' % loaded_objects_in_fixture,
                                     ending=''
                                 )
-                        # psycopg2 raises ValueError if data contains NUL chars.
-                        except (DatabaseError, IntegrityError, ValueError) as e:
+                        except (DatabaseError, ValueError) as e:
                             e.args = ("Could not load %(app_label)s.%(object_name)s(pk=%(pk)s): %(error_msg)s" % {
                                 'app_label': obj.object._meta.app_label,
                                 'object_name': obj.object._meta.object_name,
@@ -241,13 +241,13 @@ class Command(BaseCommand):
         fixture_files = []
         for fixture_dir in fixture_dirs:
             if self.verbosity >= 2:
-                self.stdout.write("Checking %s for fixtures..." % humanize(fixture_dir))
-            fixture_files_in_dir = []
+                self.stdout.write(f"Checking {humanize(fixture_dir)} for fixtures...")
             path = os.path.join(fixture_dir, fixture_name)
-            for candidate in glob.iglob(glob.escape(path) + '*'):
-                if os.path.basename(candidate) in targets:
-                    # Save the fixture_dir and fixture_name for future error messages.
-                    fixture_files_in_dir.append((candidate, fixture_dir, fixture_name))
+            fixture_files_in_dir = [
+                (candidate, fixture_dir, fixture_name)
+                for candidate in glob.iglob(f'{glob.escape(path)}*')
+                if os.path.basename(candidate) in targets
+            ]
 
             if self.verbosity >= 2 and not fixture_files_in_dir:
                 self.stdout.write("No fixture '%s' in %s." %
@@ -315,13 +315,12 @@ class Command(BaseCommand):
             cmp_fmt = None
 
         if len(parts) > 1:
-            if parts[-1] in self.serialization_formats:
-                ser_fmt = parts[-1]
-                parts = parts[:-1]
-            else:
+            if parts[-1] not in self.serialization_formats:
                 raise CommandError(
                     "Problem installing fixture '%s': %s is not a known "
                     "serialization format." % (''.join(parts[:-1]), parts[-1]))
+            ser_fmt = parts[-1]
+            parts = parts[:-1]
         else:
             ser_fmt = None
 

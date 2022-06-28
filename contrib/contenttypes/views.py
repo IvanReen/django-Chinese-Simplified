@@ -86,10 +86,7 @@ def shortcut(request, content_type_id, object_id):
         # Fall back to the current request's site.
         object_domain = RequestSite(request).domain
 
-    # If all that malarkey found an object domain, use it. Otherwise, fall back
-    # to whatever get_absolute_url() returned.
-    if object_domain is not None:
-        protocol = request.scheme
-        return HttpResponseRedirect('%s://%s%s' % (protocol, object_domain, absurl))
-    else:
+    if object_domain is None:
         return HttpResponseRedirect(absurl)
+    protocol = request.scheme
+    return HttpResponseRedirect(f'{protocol}://{object_domain}{absurl}')

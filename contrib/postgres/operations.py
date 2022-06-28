@@ -16,7 +16,10 @@ class CreateExtension(Operation):
     def database_forwards(self, app_label, schema_editor, from_state, to_state):
         if schema_editor.connection.vendor != 'postgresql':
             return
-        schema_editor.execute("CREATE EXTENSION IF NOT EXISTS %s" % schema_editor.quote_name(self.name))
+        schema_editor.execute(
+            f"CREATE EXTENSION IF NOT EXISTS {schema_editor.quote_name(self.name)}"
+        )
+
         # Clear cached, stale oids.
         get_hstore_oids.cache_clear()
         get_citext_oids.cache_clear()
@@ -26,13 +29,13 @@ class CreateExtension(Operation):
         register_type_handlers(schema_editor.connection)
 
     def database_backwards(self, app_label, schema_editor, from_state, to_state):
-        schema_editor.execute("DROP EXTENSION %s" % schema_editor.quote_name(self.name))
+        schema_editor.execute(f"DROP EXTENSION {schema_editor.quote_name(self.name)}")
         # Clear cached, stale oids.
         get_hstore_oids.cache_clear()
         get_citext_oids.cache_clear()
 
     def describe(self):
-        return "Creates extension %s" % self.name
+        return f"Creates extension {self.name}"
 
 
 class BtreeGinExtension(CreateExtension):

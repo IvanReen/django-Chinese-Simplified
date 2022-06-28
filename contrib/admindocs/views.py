@@ -54,10 +54,12 @@ class BookmarkletsView(BaseAdminDocsView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context.update({
-            'admin_url': "%s://%s%s" % (
-                self.request.scheme, self.request.get_host(), context['root_path'])
-        })
+        context.update(
+            {
+                'admin_url': f"{self.request.scheme}://{self.request.get_host()}{context['root_path']}"
+            }
+        )
+
         return context
 
 
@@ -127,17 +129,19 @@ class ViewIndexView(BaseAdminDocsView):
     template_name = 'admin_doc/view_index.html'
 
     def get_context_data(self, **kwargs):
-        views = []
         urlconf = import_module(settings.ROOT_URLCONF)
         view_functions = extract_views_from_urlpatterns(urlconf.urlpatterns)
-        for (func, regex, namespace, name) in view_functions:
-            views.append({
+        views = [
+            {
                 'full_name': get_view_name(func),
                 'url': simplify_regex(regex),
                 'url_name': ':'.join((namespace or []) + (name and [name] or [])),
                 'namespace': ':'.join((namespace or [])),
                 'name': name,
-            })
+            }
+            for func, regex, namespace, name in view_functions
+        ]
+
         return super().get_context_data(**{**kwargs, 'views': views})
 
 
@@ -242,16 +246,28 @@ class ModelDetailView(BaseAdminDocsView):
                 'app_label': app_label,
                 'object_name': data_type,
             }
-            fields.append({
-                'name': "%s.all" % field.name,
-                "data_type": 'List',
-                'verbose': utils.parse_rst(_("all %s") % verbose, 'model', _('model:') + opts.model_name),
-            })
-            fields.append({
-                'name': "%s.count" % field.name,
-                'data_type': 'Integer',
-                'verbose': utils.parse_rst(_("number of %s") % verbose, 'model', _('model:') + opts.model_name),
-            })
+            fields.extend(
+                (
+                    {
+                        'name': f"{field.name}.all",
+                        "data_type": 'List',
+                        'verbose': utils.parse_rst(
+                            _("all %s") % verbose,
+                            'model',
+                            _('model:') + opts.model_name,
+                        ),
+                    },
+                    {
+                        'name': f"{field.name}.count",
+                        'data_type': 'Integer',
+                        'verbose': utils.parse_rst(
+                            _("number of %s") % verbose,
+                            'model',
+                            _('model:') + opts.model_name,
+                        ),
+                    },
+                )
+            )
 
         methods = []
         # Gather model methods.
@@ -297,24 +313,39 @@ class ModelDetailView(BaseAdminDocsView):
                 'object_name': rel.related_model._meta.object_name,
             }
             accessor = rel.get_accessor_name()
-            fields.append({
-                'name': "%s.all" % accessor,
-                'data_type': 'List',
-                'verbose': utils.parse_rst(_("all %s") % verbose, 'model', _('model:') + opts.model_name),
-            })
-            fields.append({
-                'name': "%s.count" % accessor,
-                'data_type': 'Integer',
-                'verbose': utils.parse_rst(_("number of %s") % verbose, 'model', _('model:') + opts.model_name),
-            })
-        return super().get_context_data(**{
-            **kwargs,
-            'name': '%s.%s' % (opts.app_label, opts.object_name),
-            'summary': title,
-            'description': body,
-            'fields': fields,
-            'methods': methods,
-        })
+            fields.extend(
+                (
+                    {
+                        'name': f"{accessor}.all",
+                        'data_type': 'List',
+                        'verbose': utils.parse_rst(
+                            _("all %s") % verbose,
+                            'model',
+                            _('model:') + opts.model_name,
+                        ),
+                    },
+                    {
+                        'name': f"{accessor}.count",
+                        'data_type': 'Integer',
+                        'verbose': utils.parse_rst(
+                            _("number of %s") % verbose,
+                            'model',
+                            _('model:') + opts.model_name,
+                        ),
+                    },
+                )
+            )
+
+        return super().get_context_data(
+            **{
+                **kwargs,
+                'name': f'{opts.app_label}.{opts.object_name}',
+                'summary': title,
+                'description': body,
+                'fields': fields,
+                'methods': methods,
+            }
+        )
 
 
 class TemplateDetailView(BaseAdminDocsView):
@@ -413,5 +444,5 @@ def simplify_regex(pattern):
     # clean up any outstanding regex-y characters.
     pattern = pattern.replace('^', '').replace('$', '').replace('?', '')
     if not pattern.startswith('/'):
-        pattern = '/' + pattern
+        pattern = f'/{pattern}'
     return pattern

@@ -17,7 +17,7 @@ def popen_wrapper(args, stdout_encoding='utf-8'):
     try:
         p = Popen(args, shell=False, stdout=PIPE, stderr=PIPE, close_fds=os.name != 'nt')
     except OSError as err:
-        raise CommandError('Error executing %s' % args[0]) from err
+        raise CommandError(f'Error executing {args[0]}') from err
     output, errors = p.communicate()
     return (
         output.decode(stdout_encoding),
@@ -44,7 +44,7 @@ def handle_extensions(extensions):
         ext_list.extend(ext.replace(' ', '').split(','))
     for i, ext in enumerate(ext_list):
         if not ext.startswith('.'):
-            ext_list[i] = '.%s' % ext_list[i]
+            ext_list[i] = f'.{ext_list[i]}'
     return set(ext_list)
 
 
@@ -96,7 +96,7 @@ def parse_apps_and_model_labels(labels):
             try:
                 model = installed_apps.get_model(label)
             except LookupError:
-                raise CommandError('Unknown model: %s' % label)
+                raise CommandError(f'Unknown model: {label}')
             models.add(model)
         else:
             try:

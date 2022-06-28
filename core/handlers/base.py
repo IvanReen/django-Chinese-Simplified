@@ -44,8 +44,9 @@ class BaseHandler:
 
             if mw_instance is None:
                 raise ImproperlyConfigured(
-                    'Middleware factory %s returned None.' % middleware_path
+                    f'Middleware factory {middleware_path} returned None.'
                 )
+
 
             if hasattr(mw_instance, 'process_view'):
                 self._view_middleware.insert(0, mw_instance.process_view)
@@ -129,16 +130,14 @@ class BaseHandler:
         if response is None:
             if isinstance(callback, types.FunctionType):    # FBV
                 view_name = callback.__name__
-            else:                                           # CBV
-                view_name = callback.__class__.__name__ + '.__call__'
+            else:                                   # CBV
+                view_name = f'{callback.__class__.__name__}.__call__'
 
             raise ValueError(
                 "The view %s.%s didn't return an HttpResponse object. It "
                 "returned None instead." % (callback.__module__, view_name)
             )
 
-        # If the response supports deferred rendering, apply template
-        # response middleware and then render the response
         elif hasattr(response, 'render') and callable(response.render):
             for middleware_method in self._template_response_middleware:
                 response = middleware_method(request, response)
@@ -163,7 +162,6 @@ class BaseHandler:
         return a response for this exception, raise it.
         """
         for middleware_method in self._exception_middleware:
-            response = middleware_method(request, exception)
-            if response:
+            if response := middleware_method(request, exception):
                 return response
         raise

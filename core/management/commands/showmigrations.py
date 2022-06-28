@@ -45,12 +45,14 @@ class Command(BaseCommand):
             return self.show_list(connection, options['app_label'])
 
     def _validate_app_names(self, loader, app_names):
-        invalid_apps = []
-        for app_name in app_names:
-            if app_name not in loader.migrated_apps:
-                invalid_apps.append(app_name)
-        if invalid_apps:
-            raise CommandError('No migrations present for: %s' % (', '.join(sorted(invalid_apps))))
+        if invalid_apps := [
+            app_name
+            for app_name in app_names
+            if app_name not in loader.migrated_apps
+        ]:
+            raise CommandError(
+                f"No migrations present for: {', '.join(sorted(invalid_apps))}"
+            )
 
     def show_list(self, connection, app_names=None):
         """
@@ -77,12 +79,12 @@ class Command(BaseCommand):
                         # Give it a nice title if it's a squashed one
                         title = plan_node[1]
                         if graph.nodes[plan_node].replaces:
-                            title += " (%s squashed migrations)" % len(graph.nodes[plan_node].replaces)
+                            title += f" ({len(graph.nodes[plan_node].replaces)} squashed migrations)"
                         # Mark it as applied/unapplied
                         if plan_node in loader.applied_migrations:
-                            self.stdout.write(" [X] %s" % title)
+                            self.stdout.write(f" [X] {title}")
                         else:
-                            self.stdout.write(" [ ] %s" % title)
+                            self.stdout.write(f" [ ] {title}")
                         shown.add(plan_node)
             # If we didn't print anything, then a small message
             if not shown:
@@ -114,11 +116,8 @@ class Command(BaseCommand):
 
         # Output
         def print_deps(node):
-            out = []
-            for parent in sorted(node.parents):
-                out.append("%s.%s" % parent.key)
-            if out:
-                return " ... (%s)" % ", ".join(out)
+            if out := ["%s.%s" % parent.key for parent in sorted(node.parents)]:
+                return f' ... ({", ".join(out)})'
             return ""
 
         for node in plan:

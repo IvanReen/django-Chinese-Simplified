@@ -79,7 +79,7 @@ class Command(BaseCommand):
         # Build locale list
         all_locales = []
         for basedir in basedirs:
-            locale_dirs = filter(os.path.isdir, glob.glob('%s/*' % basedir))
+            locale_dirs = filter(os.path.isdir, glob.glob(f'{basedir}/*'))
             all_locales.extend(map(os.path.basename, locale_dirs))
 
         # Account for excluded locales
@@ -113,18 +113,21 @@ class Command(BaseCommand):
             base_path = os.path.splitext(po_path)[0]
 
             # Check writability on first location
-            if i == 0 and not is_writable(base_path + '.mo'):
+            if i == 0 and not is_writable(f'{base_path}.mo'):
                 self.stderr.write("The po files under %s are in a seemingly not writable location. "
                                   "mo files will not be updated/created." % dirpath)
                 return
 
-            args = [self.program] + self.program_options + [
-                '-o', base_path + '.mo', base_path + '.po'
-            ]
+            args = (
+                [self.program]
+                + self.program_options
+                + ['-o', f'{base_path}.mo', f'{base_path}.po']
+            )
+
             output, errors, status = popen_wrapper(args)
             if status:
                 if errors:
-                    msg = "Execution of %s failed: %s" % (self.program, errors)
+                    msg = f"Execution of {self.program} failed: {errors}"
                 else:
-                    msg = "Execution of %s failed" % self.program
+                    msg = f"Execution of {self.program} failed"
                 raise CommandError(msg)
