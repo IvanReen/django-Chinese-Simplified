@@ -28,7 +28,7 @@ class LazySettings(LazyObject):
         """
         settings_module = os.environ.get(ENVIRONMENT_VARIABLE)
         if not settings_module:
-            desc = ("setting %s" % name) if name else "settings"
+            desc = f"setting {name}" if name else "settings"
             raise ImproperlyConfigured(
                 "Requested %s, but settings are not configured. "
                 "You must either define the environment variable %s "
@@ -109,7 +109,10 @@ class Settings:
 
                 if (setting in tuple_settings and
                         not isinstance(setting_value, (list, tuple))):
-                    raise ImproperlyConfigured("The %s setting must be a list or a tuple. " % setting)
+                    raise ImproperlyConfigured(
+                        f"The {setting} setting must be a list or a tuple. "
+                    )
+
                 setattr(self, setting, setting_value)
                 self._explicit_settings.add(setting)
 
@@ -124,7 +127,7 @@ class Settings:
             zoneinfo_root = Path('/usr/share/zoneinfo')
             zone_info_file = zoneinfo_root.joinpath(*self.TIME_ZONE.split('/'))
             if zoneinfo_root.exists() and not zone_info_file.exists():
-                raise ValueError("Incorrect timezone setting: %s" % self.TIME_ZONE)
+                raise ValueError(f"Incorrect timezone setting: {self.TIME_ZONE}")
             # 将时区信息移动到os.environ中。 请参阅＃2315票，了解我们为什么不无条件地执行此操作（breaks Windows）。
             os.environ['TZ'] = self.TIME_ZONE
             time.tzset()

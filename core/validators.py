@@ -16,12 +16,10 @@ EMPTY_VALUES = (None, '', [], (), {})
 def _lazy_re_compile(regex, flags=0):
     """Lazily compile a regex with flags."""
     def _compile():
-        # Compile the regex if it was not passed pre-compiled.
         if isinstance(regex, str):
             return re.compile(regex, flags)
-        else:
-            assert not flags, "flags must be empty if regex is passed pre-compiled"
-            return regex
+        assert not flags, "flags must be empty if regex is passed pre-compiled"
+        return regex
     return SimpleLazyObject(_compile)
 
 
@@ -117,24 +115,22 @@ class URLValidator(RegexValidator):
         try:
             super().__call__(value)
         except ValidationError as e:
-            # Trivial case failed. Try for possible IDN domain
-            if value:
-                try:
-                    scheme, netloc, path, query, fragment = urlsplit(value)
-                except ValueError:  # for example, "Invalid IPv6 URL"
-                    raise ValidationError(self.message, code=self.code)
-                try:
-                    netloc = netloc.encode('idna').decode('ascii')  # IDN -> ACE
-                except UnicodeError:  # invalid domain part
-                    raise e
-                url = urlunsplit((scheme, netloc, path, query, fragment))
-                super().__call__(url)
-            else:
+            if not value:
                 raise
+            try:
+                scheme, netloc, path, query, fragment = urlsplit(value)
+            except ValueError:  # for example, "Invalid IPv6 URL"
+                raise ValidationError(self.message, code=self.code)
+            try:
+                netloc = netloc.encode('idna').decode('ascii')  # IDN -> ACE
+            except UnicodeError:  # invalid domain part
+                raise e
+            url = urlunsplit((scheme, netloc, path, query, fragment))
+            super().__call__(url)
         else:
-            # Now verify IPv6 in the netloc part
-            host_match = re.search(r'^\[(.+)\](?::\d{2,5})?$', urlsplit(value).netloc)
-            if host_match:
+            if host_match := re.search(
+                r'^\[(.+)\](?::\d{2,5})?$', urlsplit(value).netloc
+            ):
                 potential_ip = host_match.groups()[0]
                 try:
                     validate_ipv6_address(potential_ip)
@@ -211,8 +207,7 @@ class EmailValidator:
         if self.domain_regex.match(domain_part):
             return True
 
-        literal_match = self.literal_regex.match(domain_part)
-        if literal_match:
+        if literal_match := self.literal_regex.match(domain_part):
             ip_address = literal_match.group(1)
             try:
                 validate_ipv46_address(ip_address)
@@ -421,17 +416,11 @@ class DecimalValidator:
             # A positive exponent adds that many trailing zeros.
             digits = len(digit_tuple) + exponent
             decimals = 0
+        elif abs(exponent) > len(digit_tuple):
+            digits = decimals = abs(exponent)
         else:
-            # If the absolute value of the negative exponent is larger than the
-            # number of digits, then it's the same as the number of digits,
-            # because it'll consume all of the digits in digit_tuple and then
-            # add abs(exponent) - len(digit_tuple) leading zeros after the
-            # decimal point.
-            if abs(exponent) > len(digit_tuple):
-                digits = decimals = abs(exponent)
-            else:
-                digits = len(digit_tuple)
-                decimals = abs(exponent)
+            digits = len(digit_tuple)
+            decimals = abs(exponent)
         whole_digits = digits - decimals
 
         if self.max_digits is not None and digits > self.max_digits:

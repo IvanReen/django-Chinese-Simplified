@@ -51,15 +51,12 @@ class JSONField(CheckFieldDefaultMixin, Field):
         return name, path, args, kwargs
 
     def get_transform(self, name):
-        transform = super().get_transform(name)
-        if transform:
+        if transform := super().get_transform(name):
             return transform
         return KeyTransformFactory(name)
 
     def get_prep_value(self, value):
-        if value is not None:
-            return JsonAdapter(value, encoder=self.encoder)
-        return value
+        return JsonAdapter(value, encoder=self.encoder) if value is not None else value
 
     def validate(self, value, model_instance):
         super().validate(value, model_instance)
@@ -113,8 +110,8 @@ class KeyTransform(Transform):
         except ValueError:
             lookup = "'%s'" % self.key_name
         else:
-            lookup = "%s" % self.key_name
-        return "(%s %s %s)" % (lhs, self.operator, lookup), params
+            lookup = f"{self.key_name}"
+        return f"({lhs} {self.operator} {lookup})", params
 
 
 class KeyTextTransform(KeyTransform):

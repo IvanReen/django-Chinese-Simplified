@@ -72,10 +72,7 @@ def intcomma(value, use_l10n=True):
             return number_format(value, force_grouping=True)
     orig = str(value)
     new = re.sub(r"^(-?\d+)(\d{3})", r'\g<1>,\g<2>', orig)
-    if orig == new:
-        return new
-    else:
-        return intcomma(new, use_l10n)
+    return new if orig == new else intcomma(new, use_l10n)
 
 
 # A tuple of standard large number to their converters
@@ -189,11 +186,8 @@ def naturalday(value, arg=None):
     try:
         tzinfo = getattr(value, 'tzinfo', None)
         value = date(value.year, value.month, value.day)
-    except AttributeError:
+    except (AttributeError, ValueError):
         # Passed value wasn't a date object
-        return value
-    except ValueError:
-        # Date arguments out of range
         return value
     today = datetime.now(tzinfo).date()
     delta = value - today

@@ -55,10 +55,7 @@ class LimitedStream:
                 break
             self.buffer += chunk
         sio = BytesIO(self.buffer)
-        if size:
-            line = sio.readline(size)
-        else:
-            line = sio.readline()
+        line = sio.readline(size) if size else sio.readline()
         self.buffer = sio.read()
         return line
 
@@ -74,8 +71,7 @@ class WSGIRequest(HttpRequest):
         # be careful to only replace the first slash in the path because of
         # http://test/something and http://test//something being different as
         # stated in http://www.ietf.org/rfc/rfc2396.txt
-        self.path = '%s/%s' % (script_name.rstrip('/'),
-                               path_info.replace('/', '', 1))
+        self.path = f"{script_name.rstrip('/')}/{path_info.replace('/', '', 1)}"
         self.META = environ
         self.META['PATH_INFO'] = path_info
         self.META['SCRIPT_NAME'] = script_name
@@ -145,8 +141,10 @@ class WSGIHandler(base.BaseHandler):
 
         status = '%d %s' % (response.status_code, response.reason_phrase)
         response_headers = list(response.items())
-        for c in response.cookies.values():
-            response_headers.append(('Set-Cookie', c.output(header='')))
+        response_headers.extend(
+            ('Set-Cookie', c.output(header='')) for c in response.cookies.values()
+        )
+
         start_response(status, response_headers)
         if getattr(response, 'file_to_stream', None) is not None and environ.get('wsgi.file_wrapper'):
             response = environ['wsgi.file_wrapper'](response.file_to_stream)
@@ -171,14 +169,9 @@ def get_script_name(environ):
     if settings.FORCE_SCRIPT_NAME is not None:
         return settings.FORCE_SCRIPT_NAME
 
-    # If Apache's mod_rewrite had a whack at the URL, Apache set either
-    # SCRIPT_URL or REDIRECT_URL to the full resource URL before applying any
-    # rewrites. Unfortunately not every Web server (lighttpd!) passes this
-    # information through all the time, so FORCE_SCRIPT_NAME, above, is still
-    # needed.
-    script_url = get_bytes_from_wsgi(environ, 'SCRIPT_URL', '') or get_bytes_from_wsgi(environ, 'REDIRECT_URL', '')
-
-    if script_url:
+    if script_url := get_bytes_from_wsgi(
+        environ, 'SCRIPT_URL', ''
+    ) or get_bytes_from_wsgi(environ, 'REDIRECT_URL', ''):
         if b'//' in script_url:
             # mod_wsgi squashes multiple successive slashes in PATH_INFO,
             # do the same with script_url before manipulating paths (#17133).

@@ -123,9 +123,7 @@ class BaseDatabaseWrapper:
         doesn't support time zones. (When the database supports time zones,
         the adapter handles aware datetimes so Django doesn't need to.)
         """
-        if not settings.USE_TZ:
-            return None
-        elif self.features.supports_timezones:
+        if not settings.USE_TZ or self.features.supports_timezones:
             return None
         elif self.settings_dict['TIME_ZONE'] is None:
             return timezone.utc
@@ -152,8 +150,9 @@ class BaseDatabaseWrapper:
     def queries(self):
         if len(self.queries_log) == self.queries_log.maxlen:
             warnings.warn(
-                "Limit for query logging exceeded, only the last {} queries "
-                "will be returned.".format(self.queries_log.maxlen))
+                f"Limit for query logging exceeded, only the last {self.queries_log.maxlen} queries will be returned."
+            )
+
         return list(self.queries_log)
 
     # ##### Backend-specific methods for creating connections and cursors #####
@@ -222,11 +221,11 @@ class BaseDatabaseWrapper:
         Validate the connection is usable and perform database cursor wrapping.
         """
         self.validate_thread_sharing()
-        if self.queries_logged:
-            wrapped_cursor = self.make_debug_cursor(cursor)
-        else:
-            wrapped_cursor = self.make_cursor(cursor)
-        return wrapped_cursor
+        return (
+            self.make_debug_cursor(cursor)
+            if self.queries_logged
+            else self.make_cursor(cursor)
+        )
 
     def _cursor(self, name=None):
         self.ensure_connection()
@@ -393,12 +392,11 @@ class BaseDatabaseWrapper:
         self.validate_no_atomic_block()
         self.ensure_connection()
 
-        start_transaction_under_autocommit = (
-            force_begin_transaction_with_broken_autocommit and not autocommit and
-            self.features.autocommits_when_autocommit_is_off
-        )
-
-        if start_transaction_under_autocommit:
+        if start_transaction_under_autocommit := (
+            force_begin_transaction_with_broken_autocommit
+            and not autocommit
+            and self.features.autocommits_when_autocommit_is_off
+        ):
             self._start_transaction_under_autocommit()
         else:
             self._set_autocommit(autocommit)
@@ -493,25 +491,26 @@ class BaseDatabaseWrapper:
         Close the current connection if unrecoverable errors have occurred
         or if it outlived its maximum age.
         """
-        if self.connection is not None:
-            # If the application didn't restore the original autocommit setting,
-            # don't take chances, drop the connection.
-            if self.get_autocommit() != self.settings_dict['AUTOCOMMIT']:
+        if self.connection is None:
+            return
+        # If the application didn't restore the original autocommit setting,
+        # don't take chances, drop the connection.
+        if self.get_autocommit() != self.settings_dict['AUTOCOMMIT']:
+            self.close()
+            return
+
+        # If an exception other than DataError or IntegrityError occurred
+        # since the last commit / rollback, check if the connection works.
+        if self.errors_occurred:
+            if self.is_usable():
+                self.errors_occurred = False
+            else:
                 self.close()
                 return
 
-            # If an exception other than DataError or IntegrityError occurred
-            # since the last commit / rollback, check if the connection works.
-            if self.errors_occurred:
-                if self.is_usable():
-                    self.errors_occurred = False
-                else:
-                    self.close()
-                    return
-
-            if self.close_at is not None and time.time() >= self.close_at:
-                self.close()
-                return
+        if self.close_at is not None and time.time() >= self.close_at:
+            self.close()
+            return
 
     # ##### Thread safety handling #####
 

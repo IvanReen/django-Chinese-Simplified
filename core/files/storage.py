@@ -71,7 +71,7 @@ class Storage:
         # exceed the max_length.
         while self.exists(name) or (max_length and len(name) > max_length):
             # file_ext includes the dot.
-            name = os.path.join(dir_name, "%s_%s%s" % (file_root, get_random_string(7), file_ext))
+            name = os.path.join(dir_name, f"{file_root}_{get_random_string(7)}{file_ext}")
             if max_length is None:
                 continue
             # Truncate file_root if max_length exceeded.
@@ -85,7 +85,7 @@ class Storage:
                         'Please make sure that the corresponding file field '
                         'allows sufficient "max_length".' % name
                     )
-                name = os.path.join(dir_name, "%s_%s%s" % (file_root, get_random_string(7), file_ext))
+                name = os.path.join(dir_name, f"{file_root}_{get_random_string(7)}{file_ext}")
         return name
 
     def generate_filename(self, filename):
@@ -240,7 +240,7 @@ class FileSystemStorage(Storage):
                 # was created concurrently.
                 pass
         if not os.path.isdir(directory):
-            raise IOError("%s exists and is not a directory." % directory)
+            raise IOError(f"{directory} exists and is not a directory.")
 
         # There's a potential race condition between get_available_name and
         # saving the file; it's possible that two threads might return the

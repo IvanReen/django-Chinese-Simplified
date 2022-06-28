@@ -27,13 +27,14 @@ class FilteredSelectMultiple(forms.SelectMultiple):
     def media(self):
         extra = '' if settings.DEBUG else '.min'
         js = [
-            'vendor/jquery/jquery%s.js' % extra,
+            f'vendor/jquery/jquery{extra}.js',
             'jquery.init.js',
             'core.js',
             'SelectBox.js',
             'SelectFilter2.js',
         ]
-        return forms.Media(js=["admin/js/%s" % path for path in js])
+
+        return forms.Media(js=[f"admin/js/{path}" for path in js])
 
     def __init__(self, verbose_name, is_stacked, attrs=None, choices=()):
         self.verbose_name = verbose_name
@@ -55,12 +56,13 @@ class AdminDateWidget(forms.DateInput):
     def media(self):
         extra = '' if settings.DEBUG else '.min'
         js = [
-            'vendor/jquery/jquery%s.js' % extra,
+            f'vendor/jquery/jquery{extra}.js',
             'jquery.init.js',
             'calendar.js',
             'admin/DateTimeShortcuts.js',
         ]
-        return forms.Media(js=["admin/js/%s" % path for path in js])
+
+        return forms.Media(js=[f"admin/js/{path}" for path in js])
 
     def __init__(self, attrs=None, format=None):
         attrs = {'class': 'vDateField', 'size': '10', **(attrs or {})}
@@ -72,12 +74,13 @@ class AdminTimeWidget(forms.TimeInput):
     def media(self):
         extra = '' if settings.DEBUG else '.min'
         js = [
-            'vendor/jquery/jquery%s.js' % extra,
+            f'vendor/jquery/jquery{extra}.js',
             'jquery.init.js',
             'calendar.js',
             'admin/DateTimeShortcuts.js',
         ]
-        return forms.Media(js=["admin/js/%s" % path for path in js])
+
+        return forms.Media(js=[f"admin/js/{path}" for path in js])
 
     def __init__(self, attrs=None, format=None):
         attrs = {'class': 'vTimeField', 'size': '8', **(attrs or {})}
@@ -150,16 +153,13 @@ class ForeignKeyRawIdWidget(forms.TextInput):
         if rel_to in self.admin_site._registry:
             # The related object is registered with the same AdminSite
             related_url = reverse(
-                'admin:%s_%s_changelist' % (
-                    rel_to._meta.app_label,
-                    rel_to._meta.model_name,
-                ),
+                f'admin:{rel_to._meta.app_label}_{rel_to._meta.model_name}_changelist',
                 current_app=self.admin_site.name,
             )
 
-            params = self.url_parameters()
-            if params:
-                related_url += '?' + '&amp;'.join('%s=%s' % (k, v) for k, v in params.items())
+
+            if params := self.url_parameters():
+                related_url += '?' + '&amp;'.join(f'{k}={v}' for k, v in params.items())
             context['related_url'] = mark_safe(related_url)
             context['link_title'] = _('Lookup')
             # The JavaScript code looks for this class.
@@ -184,18 +184,15 @@ class ForeignKeyRawIdWidget(forms.TextInput):
         key = self.rel.get_related_field().name
         try:
             obj = self.rel.model._default_manager.using(self.db).get(**{key: value})
-        except (ValueError, self.rel.model.DoesNotExist, ValidationError):
+        except (ValueError, self.rel.model.DoesNotExist):
             return '', ''
 
         try:
             url = reverse(
-                '%s:%s_%s_change' % (
-                    self.admin_site.name,
-                    obj._meta.app_label,
-                    obj._meta.object_name.lower(),
-                ),
-                args=(obj.pk,)
+                f'{self.admin_site.name}:{obj._meta.app_label}_{obj._meta.object_name.lower()}_change',
+                args=(obj.pk,),
             )
+
         except NoReverseMatch:
             url = ''  # Admin not registered for target model.
 
@@ -223,8 +220,7 @@ class ManyToManyRawIdWidget(ForeignKeyRawIdWidget):
         return '', ''
 
     def value_from_datadict(self, data, files, name):
-        value = data.get(name)
-        if value:
+        if value := data.get(name):
             return value.split(',')
 
     def format_value(self, value):
@@ -357,17 +353,56 @@ class AdminBigIntegerFieldWidget(AdminIntegerFieldWidget):
     class_name = 'vBigIntegerField'
 
 
-# Mapping of lower case language codes [returned by Django's get_language()]
-# to language codes supported by select2.
-# See django/contrib/admin/static/admin/js/vendor/select2/i18n/*
-SELECT2_TRANSLATIONS = {x.lower(): x for x in [
-    'ar', 'az', 'bg', 'ca', 'cs', 'da', 'de', 'el', 'en', 'es', 'et',
-    'eu', 'fa', 'fi', 'fr', 'gl', 'he', 'hi', 'hr', 'hu', 'id', 'is',
-    'it', 'ja', 'km', 'ko', 'lt', 'lv', 'mk', 'ms', 'nb', 'nl', 'pl',
-    'pt-BR', 'pt', 'ro', 'ru', 'sk', 'sr-Cyrl', 'sr', 'sv', 'th',
-    'tr', 'uk', 'vi',
-]}
-SELECT2_TRANSLATIONS.update({'zh-hans': 'zh-CN', 'zh-hant': 'zh-TW'})
+SELECT2_TRANSLATIONS = {
+    x.lower(): x
+    for x in [
+        'ar',
+        'az',
+        'bg',
+        'ca',
+        'cs',
+        'da',
+        'de',
+        'el',
+        'en',
+        'es',
+        'et',
+        'eu',
+        'fa',
+        'fi',
+        'fr',
+        'gl',
+        'he',
+        'hi',
+        'hr',
+        'hu',
+        'id',
+        'is',
+        'it',
+        'ja',
+        'km',
+        'ko',
+        'lt',
+        'lv',
+        'mk',
+        'ms',
+        'nb',
+        'nl',
+        'pl',
+        'pt-BR',
+        'pt',
+        'ro',
+        'ru',
+        'sk',
+        'sr-Cyrl',
+        'sr',
+        'sv',
+        'th',
+        'tr',
+        'uk',
+        'vi',
+    ]
+} | {'zh-hans': 'zh-CN', 'zh-hant': 'zh-TW'}
 
 
 class AutocompleteMixin:
@@ -441,20 +476,27 @@ class AutocompleteMixin:
     def media(self):
         extra = '' if settings.DEBUG else '.min'
         i18n_name = SELECT2_TRANSLATIONS.get(get_language())
-        i18n_file = ('admin/js/vendor/select2/i18n/%s.js' % i18n_name,) if i18n_name else ()
+        i18n_file = (
+            (f'admin/js/vendor/select2/i18n/{i18n_name}.js',) if i18n_name else ()
+        )
+
         return forms.Media(
             js=(
-                'admin/js/vendor/jquery/jquery%s.js' % extra,
-                'admin/js/vendor/select2/select2.full%s.js' % extra,
-            ) + i18n_file + (
+                (
+                    f'admin/js/vendor/jquery/jquery{extra}.js',
+                    f'admin/js/vendor/select2/select2.full{extra}.js',
+                )
+                + i18n_file
+            )
+            + (
                 'admin/js/jquery.init.js',
                 'admin/js/autocomplete.js',
             ),
             css={
                 'screen': (
-                    'admin/css/vendor/select2/select2%s.css' % extra,
+                    f'admin/css/vendor/select2/select2{extra}.css',
                     'admin/css/autocomplete.css',
-                ),
+                )
             },
         )
 

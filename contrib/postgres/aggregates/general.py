@@ -18,9 +18,7 @@ class ArrayAgg(Aggregate):
         super().__init__(expression, distinct='DISTINCT ' if distinct else '', **extra)
 
     def convert_value(self, value, expression, connection):
-        if not value:
-            return []
-        return value
+        return value or []
 
 
 class BitAnd(Aggregate):
@@ -44,9 +42,7 @@ class JSONBAgg(Aggregate):
     output_field = JSONField()
 
     def convert_value(self, value, expression, connection):
-        if not value:
-            return []
-        return value
+        return value or []
 
 
 class StringAgg(Aggregate):
@@ -58,6 +54,4 @@ class StringAgg(Aggregate):
         super().__init__(expression, delimiter=delimiter, distinct=distinct, **extra)
 
     def convert_value(self, value, expression, connection):
-        if not value:
-            return ''
-        return value
+        return value or ''

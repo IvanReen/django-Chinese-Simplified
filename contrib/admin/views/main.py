@@ -64,7 +64,10 @@ class ChangeList:
         self.is_popup = IS_POPUP_VAR in request.GET
         to_field = request.GET.get(TO_FIELD_VAR)
         if to_field and not model_admin.to_field_allowed(request, to_field):
-            raise DisallowedModelAdminToField("The field %s cannot be referenced." % to_field)
+            raise DisallowedModelAdminToField(
+                f"The field {to_field} cannot be referenced."
+            )
+
         self.to_field = to_field
         self.params = dict(request.GET.items())
         if PAGE_VAR in self.params:
@@ -72,10 +75,7 @@ class ChangeList:
         if ERROR_FLAG in self.params:
             del self.params[ERROR_FLAG]
 
-        if self.is_popup:
-            self.list_editable = ()
-        else:
-            self.list_editable = list_editable
+        self.list_editable = () if self.is_popup else list_editable
         self.query = request.GET.get(SEARCH_VAR, '')
         self.queryset = self.get_queryset(request)
         self.get_results(request)
@@ -106,7 +106,7 @@ class ChangeList:
 
         for key, value in lookup_params.items():
             if not self.model_admin.lookup_allowed(key, value):
-                raise DisallowedModelAdminLookup("Filtering by %s not allowed" % key)
+                raise DisallowedModelAdminLookup(f"Filtering by {key} not allowed")
 
         filter_specs = []
         for list_filter in self.list_filter:
@@ -138,10 +138,10 @@ class ChangeList:
 
         if self.date_hierarchy:
             # 创建有界查找参数，以便查询更有效。
-            year = lookup_params.pop('%s__year' % self.date_hierarchy, None)
+            year = lookup_params.pop(f'{self.date_hierarchy}__year', None)
             if year is not None:
-                month = lookup_params.pop('%s__month' % self.date_hierarchy, None)
-                day = lookup_params.pop('%s__day' % self.date_hierarchy, None)
+                month = lookup_params.pop(f'{self.date_hierarchy}__month', None)
+                day = lookup_params.pop(f'{self.date_hierarchy}__day', None)
                 try:
                     from_date = datetime(
                         int(year),
@@ -159,10 +159,13 @@ class ChangeList:
                     to_date = (from_date + timedelta(days=32)).replace(day=1)
                 else:
                     to_date = from_date.replace(year=from_date.year + 1)
-                lookup_params.update({
-                    '%s__gte' % self.date_hierarchy: from_date,
-                    '%s__lt' % self.date_hierarchy: to_date,
-                })
+                lookup_params.update(
+                    {
+                        f'{self.date_hierarchy}__gte': from_date,
+                        f'{self.date_hierarchy}__lt': to_date,
+                    }
+                )
+
 
         # 此时，各种ListFilters使用的所有参数都已从lookup_params中删除，而现在只包含通过查询字符串传递的其他参数。 我们现在遍历其余参数，以确保所有参数都是有效字段，并确定其中至少有一个是否需要distinct（）。 如果查找参数不是真实字段，则纾困。
         try:
@@ -189,7 +192,7 @@ class ChangeList:
                     del p[k]
             else:
                 p[k] = v
-        return '?%s' % urlencode(sorted(p.items()))
+        return f'?{urlencode(sorted(p.items()))}'
 
     def get_results(self, request):
         paginator = self.model_admin.get_paginator(request, self.queryset, self.list_per_page)
@@ -281,7 +284,7 @@ class ChangeList:
 
         # 确保主键系统地存在于排序字段列表中，以便我们可以保证所有数据库后端的确定性顺序。
         pk_name = self.lookup_opts.pk.name
-        if {'pk', '-pk', pk_name, '-' + pk_name}.isdisjoint(ordering):
+        if {'pk', '-pk', pk_name, f'-{pk_name}'}.isdisjoint(ordering):
             # 这两组不相交，意味着pk不存在。 所以我们添加它。
             ordering.append('-pk')
 
@@ -300,11 +303,10 @@ class ChangeList:
                 if isinstance(field, (Combinable, OrderBy)):
                     if not isinstance(field, OrderBy):
                         field = field.asc()
-                    if isinstance(field.expression, F):
-                        order_type = 'desc' if field.descending else 'asc'
-                        field = field.expression.name
-                    else:
+                    if not isinstance(field.expression, F):
                         continue
+                    order_type = 'desc' if field.descending else 'asc'
+                    field = field.expression.name
                 elif field.startswith('-'):
                     field = field[1:]
                     order_type = 'desc'
@@ -357,18 +359,17 @@ class ChangeList:
         qs, search_use_distinct = self.model_admin.get_search_results(request, qs, self.query)
 
         # 如有必要，从结果中删除重复项
-        if filters_use_distinct | search_use_distinct:
-            return qs.distinct()
-        else:
-            return qs
+        return qs.distinct() if filters_use_distinct | search_use_distinct else qs
 
     def apply_select_related(self, qs):
         if self.list_select_related is True:
             return qs.select_related()
 
-        if self.list_select_related is False:
-            if self.has_related_field_in_list_display():
-                return qs.select_related()
+        if (
+            self.list_select_related is False
+            and self.has_related_field_in_list_display()
+        ):
+            return qs.select_related()
 
         if self.list_select_related:
             return qs.select_related(*self.list_select_related)
@@ -381,15 +382,17 @@ class ChangeList:
             except FieldDoesNotExist:
                 pass
             else:
-                if isinstance(field.remote_field, models.ManyToOneRel):
-                    # <FK> _id字段名称不需要加入。
-                    if field_name != field.get_attname():
-                        return True
+                if (
+                    isinstance(field.remote_field, models.ManyToOneRel)
+                    and field_name != field.get_attname()
+                ):
+                    return True
         return False
 
     def url_for_result(self, result):
         pk = getattr(result, self.pk_attname)
-        return reverse('admin:%s_%s_change' % (self.opts.app_label,
-                                               self.opts.model_name),
-                       args=(quote(pk),),
-                       current_app=self.model_admin.admin_site.name)
+        return reverse(
+            f'admin:{self.opts.app_label}_{self.opts.model_name}_change',
+            args=(quote(pk),),
+            current_app=self.model_admin.admin_site.name,
+        )

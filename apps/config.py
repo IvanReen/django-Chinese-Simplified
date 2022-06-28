@@ -41,7 +41,7 @@ class AppConfig:
         self.models = None
 
     def __repr__(self):
-        return '<%s: %s>' % (self.__class__.__name__, self.label)
+        return f'<{self.__class__.__name__}: {self.label}>'
 
     def _path_from_module(self, module):
         """尝试从其模块确定应用程序的文件系统路径。"""
@@ -50,11 +50,7 @@ class AppConfig:
         paths = list(getattr(module, '__path__', []))
         if len(paths) != 1:
             filename = getattr(module, '__file__', None)
-            if filename is not None:
-                paths = [os.path.dirname(filename)]
-            else:
-                # 由于未知原因，有时__path__返回的列表包含必须删除的重复项（＃25246）。
-                paths = list(set(paths))
+            paths = list(set(paths)) if filename is None else [os.path.dirname(filename)]
         if len(paths) > 1:
             raise ImproperlyConfigured(
                 "The app module %r has multiple filesystem locations (%r); "
@@ -173,7 +169,7 @@ class AppConfig:
         self.models = self.apps.all_models[self.label]
 
         if module_has_submodule(self.module, MODELS_MODULE_NAME):
-            models_module_name = '%s.%s' % (self.name, MODELS_MODULE_NAME)
+            models_module_name = f'{self.name}.{MODELS_MODULE_NAME}'
             self.models_module = import_module(models_module_name)
 
     def ready(self):

@@ -9,7 +9,7 @@ class PostgresSimpleLookup(Lookup):
         lhs, lhs_params = self.process_lhs(qn, connection)
         rhs, rhs_params = self.process_rhs(qn, connection)
         params = lhs_params + rhs_params
-        return '%s %s %s' % (lhs, self.operator, rhs), params
+        return f'{lhs} {self.operator} {rhs}', params
 
 
 class DataContains(PostgresSimpleLookup):

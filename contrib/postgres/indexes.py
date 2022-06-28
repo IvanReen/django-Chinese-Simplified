@@ -15,13 +15,15 @@ class PostgresIndex(Index):
         return Index.max_name_length - len(Index.suffix) + len(self.suffix)
 
     def create_sql(self, model, schema_editor, using=''):
-        statement = super().create_sql(model, schema_editor, using=' USING %s' % self.suffix)
-        with_params = self.get_with_params()
-        if with_params:
-            statement.parts['extra'] = 'WITH (%s) %s' % (
-                ', '.join(with_params),
-                statement.parts['extra'],
-            )
+        statement = super().create_sql(
+            model, schema_editor, using=f' USING {self.suffix}'
+        )
+
+        if with_params := self.get_with_params():
+            statement.parts[
+                'extra'
+            ] = f"WITH ({', '.join(with_params)}) {statement.parts['extra']}"
+
         return statement
 
     def get_with_params(self):
@@ -71,7 +73,7 @@ class GinIndex(PostgresIndex):
         if self.gin_pending_list_limit is not None:
             with_params.append('gin_pending_list_limit = %d' % self.gin_pending_list_limit)
         if self.fastupdate is not None:
-            with_params.append('fastupdate = %s' % ('on' if self.fastupdate else 'off'))
+            with_params.append(f"fastupdate = {'on' if self.fastupdate else 'off'}")
         return with_params
 
 
@@ -94,7 +96,7 @@ class GistIndex(PostgresIndex):
     def get_with_params(self):
         with_params = []
         if self.buffering is not None:
-            with_params.append('buffering = %s' % ('on' if self.buffering else 'off'))
+            with_params.append(f"buffering = {'on' if self.buffering else 'off'}")
         if self.fillfactor is not None:
             with_params.append('fillfactor = %d' % self.fillfactor)
         return with_params

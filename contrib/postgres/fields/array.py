@@ -58,18 +58,15 @@ class ArrayField(CheckFieldDefaultMixin, Field):
                     id='postgres.E002'
                 )
             )
-        else:
-            # Remove the field name checks as they are not needed here.
-            base_errors = self.base_field.check()
-            if base_errors:
-                messages = '\n    '.join('%s (%s)' % (error.msg, error.id) for error in base_errors)
-                errors.append(
-                    checks.Error(
-                        'Base field for array has errors:\n    %s' % messages,
-                        obj=self,
-                        id='postgres.E001'
-                    )
+        elif base_errors := self.base_field.check():
+            messages = '\n    '.join(f'{error.msg} ({error.id})' for error in base_errors)
+            errors.append(
+                checks.Error(
+                    'Base field for array has errors:\n    %s' % messages,
+                    obj=self,
+                    id='postgres.E001'
                 )
+            )
         return errors
 
     def set_attributes_from_name(self, name):
@@ -78,11 +75,11 @@ class ArrayField(CheckFieldDefaultMixin, Field):
 
     @property
     def description(self):
-        return 'Array of %s' % self.base_field.description
+        return f'Array of {self.base_field.description}'
 
     def db_type(self, connection):
         size = self.size or ''
-        return '%s[%s]' % (self.base_field.db_type(connection), size)
+        return f'{self.base_field.db_type(connection)}[{size}]'
 
     def get_db_prep_value(self, value, connection, prepared=False):
         if isinstance(value, (list, tuple)):
@@ -130,8 +127,7 @@ class ArrayField(CheckFieldDefaultMixin, Field):
         return json.dumps(values)
 
     def get_transform(self, name):
-        transform = super().get_transform(name)
-        if transform:
+        if transform := super().get_transform(name):
             return transform
         if '_' not in name:
             try:
@@ -162,12 +158,14 @@ class ArrayField(CheckFieldDefaultMixin, Field):
                     code='item_invalid',
                     params={'nth': index + 1},
                 )
-        if isinstance(self.base_field, ArrayField):
-            if len({len(i) for i in value}) > 1:
-                raise exceptions.ValidationError(
-                    self.error_messages['nested_array_mismatch'],
-                    code='nested_array_mismatch',
-                )
+        if (
+            isinstance(self.base_field, ArrayField)
+            and len({len(i) for i in value}) > 1
+        ):
+            raise exceptions.ValidationError(
+                self.error_messages['nested_array_mismatch'],
+                code='nested_array_mismatch',
+            )
 
     def run_validators(self, value):
         super().run_validators(value)
@@ -195,7 +193,7 @@ class ArrayField(CheckFieldDefaultMixin, Field):
 class ArrayContains(lookups.DataContains):
     def as_sql(self, qn, connection):
         sql, params = super().as_sql(qn, connection)
-        sql = '%s::%s' % (sql, self.lhs.output_field.db_type(connection))
+        sql = f'{sql}::{self.lhs.output_field.db_type(connection)}'
         return sql, params
 
 
@@ -203,7 +201,7 @@ class ArrayContains(lookups.DataContains):
 class ArrayContainedBy(lookups.ContainedBy):
     def as_sql(self, qn, connection):
         sql, params = super().as_sql(qn, connection)
-        sql = '%s::%s' % (sql, self.lhs.output_field.db_type(connection))
+        sql = f'{sql}::{self.lhs.output_field.db_type(connection)}'
         return sql, params
 
 
@@ -211,7 +209,7 @@ class ArrayContainedBy(lookups.ContainedBy):
 class ArrayExact(Exact):
     def as_sql(self, qn, connection):
         sql, params = super().as_sql(qn, connection)
-        sql = '%s::%s' % (sql, self.lhs.output_field.db_type(connection))
+        sql = f'{sql}::{self.lhs.output_field.db_type(connection)}'
         return sql, params
 
 
@@ -219,7 +217,7 @@ class ArrayExact(Exact):
 class ArrayOverlap(lookups.Overlap):
     def as_sql(self, qn, connection):
         sql, params = super().as_sql(qn, connection)
-        sql = '%s::%s' % (sql, self.lhs.output_field.db_type(connection))
+        sql = f'{sql}::{self.lhs.output_field.db_type(connection)}'
         return sql, params
 
 
@@ -264,7 +262,7 @@ class IndexTransform(Transform):
 
     def as_sql(self, compiler, connection):
         lhs, params = compiler.compile(self.lhs)
-        return '%s[%s]' % (lhs, self.index), params
+        return f'{lhs}[{self.index}]', params
 
     @property
     def output_field(self):
@@ -290,7 +288,7 @@ class SliceTransform(Transform):
 
     def as_sql(self, compiler, connection):
         lhs, params = compiler.compile(self.lhs)
-        return '%s[%s:%s]' % (lhs, self.start, self.end), params
+        return f'{lhs}[{self.start}:{self.end}]', params
 
 
 class SliceTransformFactory:

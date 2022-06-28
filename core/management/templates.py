@@ -90,10 +90,10 @@ class TemplateCommand(BaseCommand):
                               "filenames: %s\n" %
                               (app_or_project, ', '.join(extra_files)))
 
-        base_name = '%s_name' % app_or_project
-        base_subdir = '%s_template' % app_or_project
-        base_directory = '%s_directory' % app_or_project
-        camel_case_name = 'camel_case_%s_name' % app_or_project
+        base_name = f'{app_or_project}_name'
+        base_subdir = f'{app_or_project}_template'
+        base_directory = f'{app_or_project}_directory'
+        camel_case_name = f'camel_case_{app_or_project}_name'
         camel_case_value = ''.join(x for x in name.title() if x != '_')
 
         context = Context({
@@ -185,20 +185,20 @@ class TemplateCommand(BaseCommand):
         """
         if template is None:
             return path.join(django.__path__[0], 'conf', subdir)
-        else:
-            if template.startswith('file://'):
-                template = template[7:]
-            expanded_template = path.expanduser(template)
-            expanded_template = path.normpath(expanded_template)
-            if path.isdir(expanded_template):
-                return expanded_template
-            if self.is_url(template):
-                # downloads the file and returns the path
-                absolute_path = self.download(template)
-            else:
-                absolute_path = path.abspath(expanded_template)
-            if path.exists(absolute_path):
-                return self.extract(absolute_path)
+        if template.startswith('file://'):
+            template = template[7:]
+        expanded_template = path.expanduser(template)
+        expanded_template = path.normpath(expanded_template)
+        if path.isdir(expanded_template):
+            return expanded_template
+        absolute_path = (
+            self.download(template)
+            if self.is_url(template)
+            else path.abspath(expanded_template)
+        )
+
+        if path.exists(absolute_path):
+            return self.extract(absolute_path)
 
         raise CommandError("couldn't handle %s template %s." %
                            (self.app_or_project, template))
@@ -242,10 +242,7 @@ class TemplateCommand(BaseCommand):
         def cleanup_url(url):
             tmp = url.rstrip('/')
             filename = tmp.split('/')[-1]
-            if url.endswith('/'):
-                display_url = tmp + '/'
-            else:
-                display_url = url
+            display_url = f'{tmp}/' if url.endswith('/') else url
             return filename, display_url
 
         prefix = 'django_%s_template_' % self.app_or_project
@@ -304,7 +301,7 @@ class TemplateCommand(BaseCommand):
         Extract the given file to a temporarily and return
         the path of the directory with the extracted content.
         """
-        prefix = 'django_%s_template_' % self.app_or_project
+        prefix = f'django_{self.app_or_project}_template_'
         tempdir = tempfile.mkdtemp(prefix=prefix, suffix='_extract')
         self.paths_to_remove.append(tempdir)
         if self.verbosity >= 2:

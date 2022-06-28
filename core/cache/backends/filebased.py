@@ -65,11 +65,10 @@ class FileBasedCache(BaseCache):
                     locks.lock(f, locks.LOCK_EX)
                     if self._is_expired(f):
                         return False
-                    else:
-                        previous_value = pickle.loads(zlib.decompress(f.read()))
-                        f.seek(0)
-                        _write_content(f, self.get_backend_timeout(timeout), previous_value)
-                        return True
+                    previous_value = pickle.loads(zlib.decompress(f.read()))
+                    f.seek(0)
+                    _write_content(f, self.get_backend_timeout(timeout), previous_value)
+                    return True
                 finally:
                     locks.unlock(f)
         except FileNotFoundError:
@@ -157,8 +156,11 @@ class FileBasedCache(BaseCache):
         Get a list of paths to all the cache files. These are all the files
         in the root cache dir that end on the cache_suffix.
         """
-        if not os.path.exists(self._dir):
-            return []
-        filelist = [os.path.join(self._dir, fname) for fname
-                    in glob.glob1(self._dir, '*%s' % self.cache_suffix)]
-        return filelist
+        return (
+            [
+                os.path.join(self._dir, fname)
+                for fname in glob.glob1(self._dir, f'*{self.cache_suffix}')
+            ]
+            if os.path.exists(self._dir)
+            else []
+        )

@@ -107,7 +107,7 @@ def load_backend(backend_name):
         backend_name = 'django.db.backends.postgresql'
 
     try:
-        return import_module('%s.base' % backend_name)
+        return import_module(f'{backend_name}.base')
     except ImportError as e_user:
         # The database backend wasn't found. Display a helpful error message
         # listing all built-in database backends.
@@ -116,7 +116,9 @@ def load_backend(backend_name):
             name for _, name, ispkg in pkgutil.iter_modules([backend_dir])
             if ispkg and name not in {'base', 'dummy', 'postgresql_psycopg2'}
         ]
-        if backend_name not in ['django.db.backends.%s' % b for b in builtin_backends]:
+        if backend_name not in [
+            f'django.db.backends.{b}' for b in builtin_backends
+        ]:
             backend_reprs = map(repr, sorted(builtin_backends))
             raise ImproperlyConfigured(
                 "%r isn't an available database backend.\n"
@@ -238,10 +240,7 @@ class ConnectionRouter:
             self._routers = settings.DATABASE_ROUTERS
         routers = []
         for r in self._routers:
-            if isinstance(r, str):
-                router = import_string(r)()
-            else:
-                router = r
+            router = import_string(r)() if isinstance(r, str) else r
             routers.append(router)
         return routers
 
@@ -255,8 +254,7 @@ class ConnectionRouter:
                     # If the router doesn't have a method, skip to the next one.
                     pass
                 else:
-                    chosen_db = method(model, **hints)
-                    if chosen_db:
+                    if chosen_db := method(model, **hints):
                         return chosen_db
             instance = hints.get('instance')
             if instance is not None and instance._state.db:

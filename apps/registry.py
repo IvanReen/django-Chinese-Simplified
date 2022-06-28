@@ -71,10 +71,7 @@ class Apps:
 
             # 阶段1：初始化应用程序配置并导入应用程序模块。
             for entry in installed_apps:
-                if isinstance(entry, AppConfig):
-                    app_config = entry
-                else:
-                    app_config = AppConfig.create(entry)
+                app_config = entry if isinstance(entry, AppConfig) else AppConfig.create(entry)
                 if app_config.label in self.app_configs:
                     raise ImproperlyConfigured(
                         "Application labels aren't unique, "
@@ -86,9 +83,9 @@ class Apps:
             # 检查重复的应用名称。
             counts = Counter(
                 app_config.name for app_config in self.app_configs.values())
-            duplicates = [
-                name for name, count in counts.most_common() if count > 1]
-            if duplicates:
+            if duplicates := [
+                name for name, count in counts.most_common() if count > 1
+            ]:
                 raise ImproperlyConfigured(
                     "Application names aren't unique, "
                     "duplicates: %s" % ", ".join(duplicates))

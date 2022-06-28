@@ -95,11 +95,7 @@ class Command(BaseCommand):
         if self.clear:
             self.clear_dir('')
 
-        if self.symlink:
-            handler = self.link_file
-        else:
-            handler = self.copy_file
-
+        handler = self.link_file if self.symlink else self.copy_file
         found_files = OrderedDict()
         for finder in get_finders():
             for path, storage in finder.list(self.ignore_patterns):
@@ -186,24 +182,27 @@ class Command(BaseCommand):
                 raise CommandError("Collecting static files cancelled.")
 
         collected = self.collect()
-        modified_count = len(collected['modified'])
-        unmodified_count = len(collected['unmodified'])
-        post_processed_count = len(collected['post_processed'])
-
         if self.verbosity >= 1:
             template = ("\n%(modified_count)s %(identifier)s %(action)s"
                         "%(destination)s%(unmodified)s%(post_processed)s.\n")
-            summary = template % {
+            modified_count = len(collected['modified'])
+            unmodified_count = len(collected['unmodified'])
+            post_processed_count = len(collected['post_processed'])
+
+            return template % {
                 'modified_count': modified_count,
                 'identifier': 'static file' + ('' if modified_count == 1 else 's'),
                 'action': 'symlinked' if self.symlink else 'copied',
-                'destination': (" to '%s'" % destination_path if destination_path else ''),
-                'unmodified': (', %s unmodified' % unmodified_count if collected['unmodified'] else ''),
-                'post_processed': (collected['post_processed'] and
-                                   ', %s post-processed'
-                                   % post_processed_count or ''),
+                'destination': " to '%s'" % destination_path
+                if destination_path
+                else '',
+                'unmodified': f', {unmodified_count} unmodified'
+                if collected['unmodified']
+                else '',
+                'post_processed': collected['post_processed']
+                and f', {post_processed_count} post-processed'
+                or '',
             }
-            return summary
 
     def log(self, msg, level=2):
         """
@@ -321,8 +320,10 @@ class Command(BaseCommand):
                 os.symlink(source_path, full_path)
             except AttributeError:
                 import platform
-                raise CommandError("Symlinking is not supported by Python %s." %
-                                   platform.python_version())
+                raise CommandError(
+                    f"Symlinking is not supported by Python {platform.python_version()}."
+                )
+
             except NotImplementedError:
                 import platform
                 raise CommandError("Symlinking is not supported in this "

@@ -68,6 +68,8 @@ def color_style():
     """
     Return a Style object from the Django color scheme.
     """
-    if not supports_color():
-        return no_style()
-    return make_style(os.environ.get('DJANGO_COLORS', ''))
+    return (
+        make_style(os.environ.get('DJANGO_COLORS', ''))
+        if supports_color()
+        else no_style()
+    )

@@ -83,19 +83,19 @@ class Command(BaseCommand):
         if self.verbosity > 0 or self.interactive:
             self.stdout.write(self.style.MIGRATE_HEADING("Will squash the following migrations:"))
             for migration in migrations_to_squash:
-                self.stdout.write(" - %s" % migration.name)
+                self.stdout.write(f" - {migration.name}")
 
-            if self.interactive:
-                answer = None
-                while not answer or answer not in "yn":
-                    answer = input("Do you wish to proceed? [yN] ")
-                    if not answer:
-                        answer = "n"
-                        break
-                    else:
-                        answer = answer[0].lower()
-                if answer != "y":
-                    return
+        if self.interactive:
+            answer = None
+            while not answer or answer not in "yn":
+                answer = input("Do you wish to proceed? [yN] ")
+                if not answer:
+                    answer = "n"
+                    break
+                else:
+                    answer = answer[0].lower()
+            if answer != "y":
+                return
 
         # Load the operations from all those migrations and concat together,
         # along with collecting external dependencies and detecting
@@ -139,9 +139,9 @@ class Command(BaseCommand):
                     self.stdout.write("  No optimizations possible.")
                 else:
                     self.stdout.write(
-                        "  Optimized from %s operations to %s operations." %
-                        (len(operations), len(new_operations))
+                        f"  Optimized from {len(operations)} operations to {len(new_operations)} operations."
                     )
+
 
         # Work out the value of replaces (any squashed ones we're re-squashing)
         # need to feed their replaces into ours
@@ -162,13 +162,13 @@ class Command(BaseCommand):
             if squashed_name:
                 # Use the name from --squashed-name.
                 prefix, _ = start_migration.name.split('_', 1)
-                name = '%s_%s' % (prefix, squashed_name)
+                name = f'{prefix}_{squashed_name}'
             else:
                 # Generate a name.
-                name = '%s_squashed_%s' % (start_migration.name, migration.name)
+                name = f'{start_migration.name}_squashed_{migration.name}'
             new_migration = subclass(name, app_label)
         else:
-            name = '0001_%s' % (squashed_name or 'squashed_%s' % migration.name)
+            name = f"0001_{squashed_name or f'squashed_{migration.name}'}"
             new_migration = subclass(name, app_label)
             new_migration.initial = True
 
@@ -178,7 +178,12 @@ class Command(BaseCommand):
             fh.write(writer.as_string())
 
         if self.verbosity > 0:
-            self.stdout.write(self.style.MIGRATE_HEADING("Created new squashed migration %s" % writer.path))
+            self.stdout.write(
+                self.style.MIGRATE_HEADING(
+                    f"Created new squashed migration {writer.path}"
+                )
+            )
+
             self.stdout.write("  You should commit this migration but leave the old ones in place;")
             self.stdout.write("  the new migration will be used for new installs. Once you are sure")
             self.stdout.write("  all instances of the codebase have applied the migrations you squashed,")

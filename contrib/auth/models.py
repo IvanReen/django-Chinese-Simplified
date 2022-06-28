@@ -70,11 +70,7 @@ class Permission(models.Model):
                     'codename')
 
     def __str__(self):
-        return "%s | %s | %s" % (
-            self.content_type.app_label,
-            self.content_type,
-            self.name,
-        )
+        return f"{self.content_type.app_label} | {self.content_type} | {self.name}"
 
     def natural_key(self):
         return (self.codename,) + self.content_type.natural_key()
@@ -341,7 +337,7 @@ class AbstractUser(AbstractBaseUser, PermissionsMixin):
         """
         Return the first_name plus the last_name, with a space in between.
         """
-        full_name = '%s %s' % (self.first_name, self.last_name)
+        full_name = f'{self.first_name} {self.last_name}'
         return full_name.strip()
 
     def get_short_name(self):

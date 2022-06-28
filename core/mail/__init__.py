@@ -92,10 +92,13 @@ def mail_admins(subject, message, fail_silently=False, connection=None,
     if not settings.ADMINS:
         return
     mail = EmailMultiAlternatives(
-        '%s%s' % (settings.EMAIL_SUBJECT_PREFIX, subject), message,
-        settings.SERVER_EMAIL, [a[1] for a in settings.ADMINS],
+        f'{settings.EMAIL_SUBJECT_PREFIX}{subject}',
+        message,
+        settings.SERVER_EMAIL,
+        [a[1] for a in settings.ADMINS],
         connection=connection,
     )
+
     if html_message:
         mail.attach_alternative(html_message, 'text/html')
     mail.send(fail_silently=fail_silently)
@@ -107,10 +110,13 @@ def mail_managers(subject, message, fail_silently=False, connection=None,
     if not settings.MANAGERS:
         return
     mail = EmailMultiAlternatives(
-        '%s%s' % (settings.EMAIL_SUBJECT_PREFIX, subject), message,
-        settings.SERVER_EMAIL, [a[1] for a in settings.MANAGERS],
+        f'{settings.EMAIL_SUBJECT_PREFIX}{subject}',
+        message,
+        settings.SERVER_EMAIL,
+        [a[1] for a in settings.MANAGERS],
         connection=connection,
     )
+
     if html_message:
         mail.attach_alternative(html_message, 'text/html')
     mail.send(fail_silently=fail_silently)

@@ -30,12 +30,12 @@ class PostGISSchemaEditor(DatabaseSchemaEditor):
             field_column = self.rast_index_wrapper % field_column
         elif field.dim > 2 and not field.geography:
             # Use "nd" ops which are fast on multidimensional cases
-            field_column = "%s %s" % (field_column, self.geom_index_ops_nd)
+            field_column = f"{field_column} {self.geom_index_ops_nd}"
 
         return self.sql_create_index % {
-            "name": self.quote_name('%s_%s_id' % (model._meta.db_table, field.column)),
+            "name": self.quote_name(f'{model._meta.db_table}_{field.column}_id'),
             "table": self.quote_name(model._meta.db_table),
-            "using": "USING %s" % self.geom_index_type,
+            "using": f"USING {self.geom_index_type}",
             "columns": field_column,
             "extra": '',
         }

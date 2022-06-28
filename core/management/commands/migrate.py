@@ -84,14 +84,11 @@ class Command(BaseCommand):
         # Raise an error if any migrations are applied before their dependencies.
         executor.loader.check_consistent_history(connection)
 
-        # Before anything else, see if there's conflicting apps and drop out
-        # hard if there are any
-        conflicts = executor.loader.detect_conflicts()
-        if conflicts:
+        if conflicts := executor.loader.detect_conflicts():
             name_str = "; ".join(
-                "%s in %s" % (", ".join(names), app)
-                for app, names in conflicts.items()
+                f'{", ".join(names)} in {app}' for app, names in conflicts.items()
             )
+
             raise CommandError(
                 "Conflicting migrations detected; multiple leaf nodes in the "
                 "migration graph: (%s).\nTo fix them run "
@@ -148,16 +145,22 @@ class Command(BaseCommand):
                     self.style.MIGRATE_LABEL("  Apply all migrations: ") +
                     (", ".join(sorted({a for a, n in targets})) or "(none)")
                 )
+            elif targets[0][1] is None:
+                self.stdout.write(
+                    (
+                        self.style.MIGRATE_LABEL("  Unapply all migrations: ")
+                        + f"{targets[0][0]}"
+                    )
+                )
+
             else:
-                if targets[0][1] is None:
-                    self.stdout.write(self.style.MIGRATE_LABEL(
-                        "  Unapply all migrations: ") + "%s" % (targets[0][0],)
+                self.stdout.write(
+                    (
+                        self.style.MIGRATE_LABEL("  Target specific migration: ")
+                        + f"{targets[0][1]}, from {targets[0][0]}"
                     )
-                else:
-                    self.stdout.write(self.style.MIGRATE_LABEL(
-                        "  Target specific migration: ") + "%s, from %s"
-                        % (targets[0][1], targets[0][0])
-                    )
+                )
+
 
         pre_migrate_state = executor._create_project_state(with_applied_migrations=True)
         pre_migrate_apps = pre_migrate_state.apps
@@ -182,8 +185,7 @@ class Command(BaseCommand):
                     executor.loader.project_state(),
                     ProjectState.from_apps(apps),
                 )
-                changes = autodetector.changes(graph=executor.loader.graph)
-                if changes:
+                if changes := autodetector.changes(graph=executor.loader.graph):
                     self.stdout.write(self.style.NOTICE(
                         "  Your models have changes that are not yet reflected "
                         "in a migration, and so won't be applied."
@@ -227,38 +229,39 @@ class Command(BaseCommand):
         )
 
     def migration_progress_callback(self, action, migration=None, fake=False):
-        if self.verbosity >= 1:
-            compute_time = self.verbosity > 1
-            if action == "apply_start":
-                if compute_time:
-                    self.start = time.time()
-                self.stdout.write("  Applying %s..." % migration, ending="")
-                self.stdout.flush()
-            elif action == "apply_success":
-                elapsed = " (%.3fs)" % (time.time() - self.start) if compute_time else ""
-                if fake:
-                    self.stdout.write(self.style.SUCCESS(" FAKED" + elapsed))
-                else:
-                    self.stdout.write(self.style.SUCCESS(" OK" + elapsed))
-            elif action == "unapply_start":
-                if compute_time:
-                    self.start = time.time()
-                self.stdout.write("  Unapplying %s..." % migration, ending="")
-                self.stdout.flush()
-            elif action == "unapply_success":
-                elapsed = " (%.3fs)" % (time.time() - self.start) if compute_time else ""
-                if fake:
-                    self.stdout.write(self.style.SUCCESS(" FAKED" + elapsed))
-                else:
-                    self.stdout.write(self.style.SUCCESS(" OK" + elapsed))
-            elif action == "render_start":
-                if compute_time:
-                    self.start = time.time()
-                self.stdout.write("  Rendering model states...", ending="")
-                self.stdout.flush()
-            elif action == "render_success":
-                elapsed = " (%.3fs)" % (time.time() - self.start) if compute_time else ""
-                self.stdout.write(self.style.SUCCESS(" DONE" + elapsed))
+        if self.verbosity < 1:
+            return
+        compute_time = self.verbosity > 1
+        if action == "apply_start":
+            if compute_time:
+                self.start = time.time()
+            self.stdout.write(f"  Applying {migration}...", ending="")
+            self.stdout.flush()
+        elif action == "apply_success":
+            elapsed = " (%.3fs)" % (time.time() - self.start) if compute_time else ""
+            if fake:
+                self.stdout.write(self.style.SUCCESS(f" FAKED{elapsed}"))
+            else:
+                self.stdout.write(self.style.SUCCESS(f" OK{elapsed}"))
+        elif action == "unapply_start":
+            if compute_time:
+                self.start = time.time()
+            self.stdout.write(f"  Unapplying {migration}...", ending="")
+            self.stdout.flush()
+        elif action == "unapply_success":
+            elapsed = " (%.3fs)" % (time.time() - self.start) if compute_time else ""
+            if fake:
+                self.stdout.write(self.style.SUCCESS(f" FAKED{elapsed}"))
+            else:
+                self.stdout.write(self.style.SUCCESS(f" OK{elapsed}"))
+        elif action == "render_start":
+            if compute_time:
+                self.start = time.time()
+            self.stdout.write("  Rendering model states...", ending="")
+            self.stdout.flush()
+        elif action == "render_success":
+            elapsed = " (%.3fs)" % (time.time() - self.start) if compute_time else ""
+            self.stdout.write(self.style.SUCCESS(f" DONE{elapsed}"))
 
     def sync_apps(self, connection, app_labels):
         """Run the old syncdb-style operation on a list of app_labels."""

@@ -18,7 +18,7 @@ class SearchVectorExact(Lookup):
         lhs, lhs_params = self.process_lhs(qn, connection)
         rhs, rhs_params = self.process_rhs(qn, connection)
         params = lhs_params + rhs_params
-        return '%s @@ %s = true' % (lhs, rhs), params
+        return f'{lhs} @@ {rhs} = true', params
 
 
 class SearchVectorField(Field):
@@ -37,7 +37,10 @@ class SearchVectorCombinable:
     ADD = '||'
 
     def _combine(self, other, connector, reversed):
-        if not isinstance(other, SearchVectorCombinable) or not self.config == other.config:
+        if (
+            not isinstance(other, SearchVectorCombinable)
+            or self.config != other.config
+        ):
             raise TypeError('SearchVector can only be combined with other SearchVectors')
         if reversed:
             return CombinedSearchVector(other, connector, self, self.config)
@@ -64,10 +67,16 @@ class SearchVector(SearchVectorCombinable, Func):
     def resolve_expression(self, query=None, allow_joins=True, reuse=None, summarize=False, for_save=False):
         resolved = super().resolve_expression(query, allow_joins, reuse, summarize, for_save)
         if self.config:
-            if not hasattr(self.config, 'resolve_expression'):
-                resolved.config = Value(self.config).resolve_expression(query, allow_joins, reuse, summarize, for_save)
-            else:
-                resolved.config = self.config.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+            resolved.config = (
+                self.config.resolve_expression(
+                    query, allow_joins, reuse, summarize, for_save
+                )
+                if hasattr(self.config, 'resolve_expression')
+                else Value(self.config).resolve_expression(
+                    query, allow_joins, reuse, summarize, for_save
+                )
+            )
+
         return resolved
 
     def as_sql(self, compiler, connection, function=None, template=None):
@@ -75,14 +84,15 @@ class SearchVector(SearchVectorCombinable, Func):
         if template is None:
             if self.config:
                 config_sql, config_params = compiler.compile(self.config)
-                template = "%(function)s({}::regconfig, %(expressions)s)".format(config_sql.replace('%', '%%'))
+                template = f"%(function)s({config_sql.replace('%', '%%')}::regconfig, %(expressions)s)"
+
             else:
                 template = self.template
         sql, params = super().as_sql(compiler, connection, function=function, template=template)
         extra_params = []
         if self.weight:
             weight_sql, extra_params = compiler.compile(self.weight)
-            sql = 'setweight({}, {})'.format(sql, weight_sql)
+            sql = f'setweight({sql}, {weight_sql})'
         return sql, config_params + params + extra_params
 
 
@@ -99,10 +109,10 @@ class SearchQueryCombinable:
     def _combine(self, other, connector, reversed):
         if not isinstance(other, SearchQueryCombinable):
             raise TypeError(
-                'SearchQuery can only be combined with other SearchQuerys, '
-                'got {}.'.format(type(other))
+                f'SearchQuery can only be combined with other SearchQuerys, got {type(other)}.'
             )
-        if not self.config == other.config:
+
+        if self.config != other.config:
             raise TypeError("SearchQuery configs don't match.")
         if reversed:
             return CombinedSearchQuery(other, connector, self, self.config)
@@ -135,22 +145,28 @@ class SearchQuery(SearchQueryCombinable, Value):
     def resolve_expression(self, query=None, allow_joins=True, reuse=None, summarize=False, for_save=False):
         resolved = super().resolve_expression(query, allow_joins, reuse, summarize, for_save)
         if self.config:
-            if not hasattr(self.config, 'resolve_expression'):
-                resolved.config = Value(self.config).resolve_expression(query, allow_joins, reuse, summarize, for_save)
-            else:
-                resolved.config = self.config.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+            resolved.config = (
+                self.config.resolve_expression(
+                    query, allow_joins, reuse, summarize, for_save
+                )
+                if hasattr(self.config, 'resolve_expression')
+                else Value(self.config).resolve_expression(
+                    query, allow_joins, reuse, summarize, for_save
+                )
+            )
+
         return resolved
 
     def as_sql(self, compiler, connection):
         params = [self.value]
         if self.config:
             config_sql, config_params = compiler.compile(self.config)
-            template = 'plainto_tsquery({}::regconfig, %s)'.format(config_sql)
+            template = f'plainto_tsquery({config_sql}::regconfig, %s)'
             params = config_params + [self.value]
         else:
             template = 'plainto_tsquery(%s)'
         if self.invert:
-            template = '!!({})'.format(template)
+            template = f'!!({template})'
         return template, params
 
     def _combine(self, other, connector, reversed):
@@ -186,11 +202,10 @@ class SearchRank(Func):
     def as_sql(self, compiler, connection, function=None, template=None):
         extra_params = []
         extra_context = {}
-        if template is None and self.extra.get('weights'):
-            if self.weights:
-                template = '%(function)s(%(weights)s, %(expressions)s)'
-                weight_sql, extra_params = compiler.compile(self.weights)
-                extra_context['weights'] = weight_sql
+        if template is None and self.extra.get('weights') and self.weights:
+            template = '%(function)s(%(weights)s, %(expressions)s)'
+            weight_sql, extra_params = compiler.compile(self.weights)
+            extra_context['weights'] = weight_sql
         sql, params = super().as_sql(
             compiler, connection,
             function=function, template=template, **extra_context

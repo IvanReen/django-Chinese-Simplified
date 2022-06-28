@@ -29,10 +29,12 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--%s' % self.UserModel.USERNAME_FIELD,
-            dest=self.UserModel.USERNAME_FIELD, default=None,
+            f'--{self.UserModel.USERNAME_FIELD}',
+            dest=self.UserModel.USERNAME_FIELD,
+            default=None,
             help='Specifies the login for the superuser.',
         )
+
         parser.add_argument(
             '--noinput', '--no-input', action='store_false', dest='interactive',
             help=(
@@ -50,8 +52,10 @@ class Command(BaseCommand):
         )
         for field in self.UserModel.REQUIRED_FIELDS:
             parser.add_argument(
-                '--%s' % field, dest=field, default=None,
-                help='Specifies the %s for the superuser.' % field,
+                f'--{field}',
+                dest=field,
+                default=None,
+                help=f'Specifies the {field} for the superuser.',
             )
 
     def execute(self, *args, **options):
@@ -74,15 +78,17 @@ class Command(BaseCommand):
         if not options['interactive']:
             try:
                 if not username:
-                    raise CommandError("You must use --%s with --noinput." % self.UserModel.USERNAME_FIELD)
+                    raise CommandError(
+                        f"You must use --{self.UserModel.USERNAME_FIELD} with --noinput."
+                    )
+
                 username = self.username_field.clean(username, None)
 
                 for field_name in self.UserModel.REQUIRED_FIELDS:
-                    if options[field_name]:
-                        field = self.UserModel._meta.get_field(field_name)
-                        user_data[field_name] = field.clean(options[field_name], None)
-                    else:
-                        raise CommandError("You must use --%s with --noinput." % field_name)
+                    if not options[field_name]:
+                        raise CommandError(f"You must use --{field_name} with --noinput.")
+                    field = self.UserModel._meta.get_field(field_name)
+                    user_data[field_name] = field.clean(options[field_name], None)
             except exceptions.ValidationError as e:
                 raise CommandError('; '.join(e.messages))
 
@@ -104,11 +110,11 @@ class Command(BaseCommand):
                     username_rel = self.username_field.remote_field
                     input_msg = '%s%s: ' % (
                         input_msg,
-                        ' (%s.%s)' % (
-                            username_rel.model._meta.object_name,
-                            username_rel.field_name
-                        ) if username_rel else ''
+                        f' ({username_rel.model._meta.object_name}.{username_rel.field_name})'
+                        if username_rel
+                        else '',
                     )
+
                     username = self.get_input_data(self.username_field, input_msg, default_username)
                     if not username:
                         continue
@@ -118,11 +124,11 @@ class Command(BaseCommand):
                         except self.UserModel.DoesNotExist:
                             pass
                         else:
-                            self.stderr.write("Error: That %s is already taken." % verbose_field_name)
+                            self.stderr.write(f"Error: That {verbose_field_name} is already taken.")
                             username = None
 
                 if not username:
-                    raise CommandError('%s cannot be blank.' % capfirst(verbose_field_name))
+                    raise CommandError(f'{capfirst(verbose_field_name)} cannot be blank.')
 
                 for field_name in self.UserModel.REQUIRED_FIELDS:
                     field = self.UserModel._meta.get_field(field_name)
@@ -130,11 +136,11 @@ class Command(BaseCommand):
                     while user_data[field_name] is None:
                         message = '%s%s: ' % (
                             capfirst(field.verbose_name),
-                            ' (%s.%s)' % (
-                                field.remote_field.model._meta.object_name,
-                                field.remote_field.field_name,
-                            ) if field.remote_field else '',
+                            f' ({field.remote_field.model._meta.object_name}.{field.remote_field.field_name})'
+                            if field.remote_field
+                            else '',
                         )
+
                         input_value = self.get_input_data(field, message)
                         user_data[field_name] = input_value
                         fake_user_data[field_name] = input_value
@@ -196,7 +202,7 @@ class Command(BaseCommand):
         try:
             val = field.clean(raw_value, None)
         except exceptions.ValidationError as e:
-            self.stderr.write("Error: %s" % '; '.join(e.messages))
+            self.stderr.write(f"Error: {'; '.join(e.messages)}")
             val = None
 
         return val

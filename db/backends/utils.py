@@ -122,10 +122,10 @@ class CursorDebugWrapper(CursorWrapper):
                 times = len(param_list)
             except TypeError:           # param_list could be an iterator
                 times = '?'
-            self.db.queries_log.append({
-                'sql': '%s times: %s' % (times, sql),
-                'time': "%.3f" % duration,
-            })
+            self.db.queries_log.append(
+                {'sql': f'{times} times: {sql}', 'time': "%.3f" % duration}
+            )
+
             logger.debug(
                 '(%.3f) %s; args=%s', duration, sql, param_list,
                 extra={'duration': duration, 'sql': sql, 'params': param_list}
@@ -148,7 +148,9 @@ def typecast_time(s):  # does NOT store time zone information
         seconds, microseconds = seconds.split('.')
     else:
         microseconds = '0'
-    return datetime.time(int(hour), int(minutes), int(seconds), int((microseconds + '000000')[:6]))
+    return datetime.time(
+        int(hour), int(minutes), int(seconds), int(f'{microseconds}000000'[:6])
+    )
 
 
 def typecast_timestamp(s):  # does NOT store time zone information
@@ -162,10 +164,10 @@ def typecast_timestamp(s):  # does NOT store time zone information
     # Extract timezone information, if it exists. Currently it's ignored.
     if '-' in t:
         t, tz = t.split('-', 1)
-        tz = '-' + tz
+        tz = f'-{tz}'
     elif '+' in t:
         t, tz = t.split('+', 1)
-        tz = '+' + tz
+        tz = f'+{tz}'
     else:
         tz = ''
     dates = d.split('-')
@@ -177,9 +179,14 @@ def typecast_timestamp(s):  # does NOT store time zone information
         microseconds = '0'
     tzinfo = utc if settings.USE_TZ else None
     return datetime.datetime(
-        int(dates[0]), int(dates[1]), int(dates[2]),
-        int(times[0]), int(times[1]), int(seconds),
-        int((microseconds + '000000')[:6]), tzinfo
+        int(dates[0]),
+        int(dates[1]),
+        int(dates[2]),
+        int(times[0]),
+        int(times[1]),
+        int(seconds),
+        int(f'{microseconds}000000'[:6]),
+        tzinfo,
     )
 
 
@@ -188,9 +195,7 @@ def typecast_timestamp(s):  # does NOT store time zone information
 ###############################################
 
 def rev_typecast_decimal(d):
-    if d is None:
-        return None
-    return str(d)
+    return None if d is None else str(d)
 
 
 def split_identifier(identifier):

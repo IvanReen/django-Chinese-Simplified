@@ -12,14 +12,14 @@ def pack(structure, data):
     """
     Pack data into hex string with little endian format.
     """
-    return struct.pack('<' + structure, *data)
+    return struct.pack(f'<{structure}', *data)
 
 
 def unpack(structure, data):
     """
     Unpack little endian hexlified binary string into a list.
     """
-    return struct.unpack('<' + structure, bytes.fromhex(data))
+    return struct.unpack(f'<{structure}', bytes.fromhex(data))
 
 
 def chunk(data, index):
@@ -122,7 +122,7 @@ def to_pgraster(rast):
         #
         # For example, if the byte value is 71, then the datatype is
         # 71-64 = 7 (32BSI) and the nodata value is True.
-        structure = 'B' + GDAL_TO_STRUCT[band.datatype()]
+        structure = f'B{GDAL_TO_STRUCT[band.datatype()]}'
 
         # Get band pixel type in PostGIS notation
         pixeltype = GDAL_TO_POSTGIS[band.datatype()]

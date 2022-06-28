@@ -40,7 +40,7 @@ class OracleGeometryColumns(models.Model):
         return 'column_name'
 
     def __str__(self):
-        return '%s - %s (SRID: %s)' % (self.table_name, self.column_name, self.srid)
+        return f'{self.table_name} - {self.column_name} (SRID: {self.srid})'
 
 
 class OracleSpatialRefSys(models.Model, SpatialRefSysMixin):

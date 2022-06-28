@@ -114,8 +114,7 @@ class LogoutView(SuccessURLAllowedHostsMixin, TemplateView):
     @method_decorator(never_cache)
     def dispatch(self, request, *args, **kwargs):
         auth_logout(request)
-        next_page = self.get_next_page()
-        if next_page:
+        if next_page := self.get_next_page():
             # Redirect to this page until the session has been cleared.
             return HttpResponseRedirect(next_page)
         return super().dispatch(request, *args, **kwargs)
@@ -268,15 +267,14 @@ class PasswordResetConfirmView(PasswordContextMixin, FormView):
                     # If the token is valid, display the password reset form.
                     self.validlink = True
                     return super().dispatch(*args, **kwargs)
-            else:
-                if self.token_generator.check_token(self.user, token):
-                    # Store the token in the session and redirect to the
-                    # password reset form at a URL without the token. That
-                    # avoids the possibility of leaking the token in the
-                    # HTTP Referer header.
-                    self.request.session[INTERNAL_RESET_SESSION_TOKEN] = token
-                    redirect_url = self.request.path.replace(token, INTERNAL_RESET_URL_TOKEN)
-                    return HttpResponseRedirect(redirect_url)
+            elif self.token_generator.check_token(self.user, token):
+                # Store the token in the session and redirect to the
+                # password reset form at a URL without the token. That
+                # avoids the possibility of leaking the token in the
+                # HTTP Referer header.
+                self.request.session[INTERNAL_RESET_SESSION_TOKEN] = token
+                redirect_url = self.request.path.replace(token, INTERNAL_RESET_URL_TOKEN)
+                return HttpResponseRedirect(redirect_url)
 
         # Display the "Password reset unsuccessful" page.
         return self.render_to_response(self.get_context_data())
@@ -286,7 +284,7 @@ class PasswordResetConfirmView(PasswordContextMixin, FormView):
             # urlsafe_base64_decode() decodes to bytestring
             uid = urlsafe_base64_decode(uidb64).decode()
             user = UserModel._default_manager.get(pk=uid)
-        except (TypeError, ValueError, OverflowError, UserModel.DoesNotExist, ValidationError):
+        except (TypeError, ValueError, OverflowError, UserModel.DoesNotExist):
             user = None
         return user
 
